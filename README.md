@@ -24,53 +24,107 @@ open it.
 
 ## Install
 
-All paths need Firefox 109+, and the Rust paths need `rustup` /
-[rustup.rs](https://rustup.rs).
+Socketbar has two parts that install separately:
 
-### With cargo, straight from git
+1. The **extension**, loaded by Firefox.
+2. The **native host**, a binary Firefox launches to read `/proc`.
+
+Both must be present for anything to work. Pick one option from each menu
+below. Requires Firefox 109+.
+
+### 1. Install the extension
+
+<table>
+<tr><th>Option</th><th>Gets you</th><th>Cost</th></tr>
+<tr>
+<td><b>Signed <code>.xpi</code> from a release</b><br>Download <code>socketbar-&lt;version&gt;.xpi</code> from the <a href="https://github.com/u6bkep/socketbar/releases/latest">latest release</a> and drag it into <code>about:addons</code>.</td>
+<td>Persistent install. Works in any Firefox (stable, ESR, Developer, Nightly).</td>
+<td>Requires a release tag that passed Mozilla's unlisted signing.</td>
+</tr>
+<tr>
+<td><b>Temporary load from a clone</b><br>In Firefox, go to <code>about:debugging#/runtime/this-firefox</code> → <b>Load Temporary Add-on…</b> → pick <code>extension/manifest.json</code> from the repo.</td>
+<td>Works off <code>main</code>, no signing needed. Good for development or trying an unreleased branch.</td>
+<td>Disappears on every Firefox restart — re-load each session.</td>
+</tr>
+<tr>
+<td><b>Unsigned <code>.xpi</code> in Developer Edition / Nightly</b><br>Set <code>xpinstall.signatures.required</code> to <code>false</code> in <code>about:config</code>, then drag the unsigned <code>.xpi</code> from CI artifacts or <code>zip</code> up <code>extension/</code> yourself.</td>
+<td>Persistent install without waiting on AMO.</td>
+<td>Only works in Developer Edition, Nightly, or ESR — not stable Firefox.</td>
+</tr>
+</table>
+
+### 2. Install the native host
+
+All three options finish by running `socketbar-host install`, which writes
+`~/.mozilla/native-messaging-hosts/io.socketbar.host.json` pointing at the
+binary. Firefox reads that file to locate the host.
+
+<table>
+<tr><th>Option</th><th>Gets you</th><th>Cost</th></tr>
+<tr>
+<td>
+
+<b>cargo from git</b>
 
 ```sh
 cargo install --git https://github.com/u6bkep/socketbar socketbar-host
 socketbar-host install
 ```
 
-The first line builds and drops the binary into `~/.cargo/bin`. The second
-writes `~/.mozilla/native-messaging-hosts/io.socketbar.host.json` pointing at
-it, which is how Firefox finds the host. Re-run `socketbar-host install` after
-each upgrade so the manifest points at the new binary.
+</td>
+<td>Latest <code>main</code>. Binary lives in <code>~/.cargo/bin</code>.</td>
+<td>Needs <a href="https://rustup.rs">rustup</a>; compiles from source (~20 s).</td>
+</tr>
+<tr>
+<td>
 
-Then load the extension (grab `socketbar-*.xpi` from a
-[release](https://github.com/u6bkep/socketbar/releases/latest) and drag it into
-`about:addons`, or clone this repo and load `extension/manifest.json` from
-`about:debugging`).
-
-To remove: `socketbar-host uninstall && cargo uninstall socketbar-host`.
-
-### From a clone
+<b>Clone + <code>install.sh</code></b>
 
 ```sh
 git clone https://github.com/u6bkep/socketbar && cd socketbar
 ./install.sh
 ```
 
-`install.sh` runs `cargo build --release` and `socketbar-host install` for you.
-Then in Firefox:
+</td>
+<td>Same as above, but builds into <code>host/target/release</code> inside the clone.</td>
+<td>Needs rustup. Binary stays in the repo — don't delete the clone.</td>
+</tr>
+<tr>
+<td>
 
-1. `about:debugging#/runtime/this-firefox`
-2. **Load Temporary Add-on…**
-3. Pick `extension/manifest.json`
-4. Click the toolbar icon, or type `lh` + space in the URL bar
+<b>Prebuilt binary from a release</b>
 
-### From a release binary (no Rust toolchain)
+Download <code>socketbar-host-&lt;target&gt;</code> from the <a href="https://github.com/u6bkep/socketbar/releases/latest">latest release</a>, then:
 
-Download the matching `socketbar-host-*` binary from a
-[release](https://github.com/u6bkep/socketbar/releases/latest), make it executable,
-and run `./socketbar-host-<target> install` — the subcommand locates itself via
-`current_exe()` and writes a manifest pointing at wherever you put the file.
+```sh
+chmod +x socketbar-host-*
+./socketbar-host-* install
+```
 
-For Firefox release builds, the `.xpi` must be signed by Mozilla — see
-[AMO signing](https://extensionworkshop.com/documentation/publish/signing-and-distribution-overview/).
-Until then, load it via `about:debugging` as above.
+</td>
+<td>No Rust toolchain required. The binary can live anywhere — <code>install</code> writes its absolute path into the manifest.</td>
+<td>Linux x86_64 only. Move or delete the binary → re-run <code>install</code>.</td>
+</tr>
+</table>
+
+After both parts are in place: click the Socketbar toolbar icon, or type `lh` +
+space in the URL bar.
+
+### Upgrading
+
+Re-run `socketbar-host install` after every host upgrade (the manifest needs to
+point at the new binary path). The extension auto-updates if you installed via
+signed `.xpi` and it's enabled in `about:addons`; otherwise re-drag the new
+`.xpi` or re-run `Load Temporary Add-on…`.
+
+### Uninstall
+
+```sh
+socketbar-host uninstall      # removes the Firefox host manifest
+cargo uninstall socketbar-host  # if installed via cargo
+```
+
+Remove the extension from `about:addons`.
 
 ## Filters
 

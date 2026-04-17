@@ -151,49 +151,50 @@ fn uninstall() -> io::Result<()> {
 }
 
 fn usage(out: &mut dyn Write) -> io::Result<()> {
-    writeln!(out, "Socketbar native-messaging host")
-        .and_then(|_| writeln!(out))
-        .and_then(|_| writeln!(out, "USAGE:"))
-        .and_then(|_| {
-            writeln!(
-                out,
-                "  socketbar-host             run as a Firefox native-messaging host (no args)"
-            )
-        })
-        .and_then(|_| {
-            writeln!(
-                out,
-                "  socketbar-host install     write Firefox host manifest pointing at this binary"
-            )
-        })
-        .and_then(|_| {
-            writeln!(
-                out,
-                "  socketbar-host uninstall   remove the Firefox host manifest"
-            )
-        })
+    writeln!(out, "Socketbar native-messaging host")?;
+    writeln!(out)?;
+    writeln!(out, "You probably want one of:")?;
+    writeln!(
+        out,
+        "  socketbar-host install     write the Firefox host manifest pointing at this binary"
+    )?;
+    writeln!(
+        out,
+        "  socketbar-host uninstall   remove the Firefox host manifest"
+    )?;
+    writeln!(out)?;
+    writeln!(
+        out,
+        "When launched by Firefox (no args, stdin piped), this binary speaks"
+    )?;
+    writeln!(
+        out,
+        "the native-messaging protocol. Running it at a terminal shows this help."
+    )
 }
 
 fn main() -> ExitCode {
     let args: Vec<String> = env::args().skip(1).collect();
     let result = match args.first().map(String::as_str) {
-        None => {
-            if io::stdin().is_terminal() {
-                let _ = usage(&mut io::stderr());
-                return ExitCode::SUCCESS;
-            }
-            serve()
-        }
         Some("install") => install(),
         Some("uninstall") => uninstall(),
         Some("-h" | "--help") => {
             let _ = usage(&mut io::stdout());
             return ExitCode::SUCCESS;
         }
-        Some(other) => {
-            eprintln!("unknown subcommand: {other}");
-            let _ = usage(&mut io::stderr());
-            return ExitCode::from(2);
+        // No recognised subcommand. Firefox launches native-messaging hosts
+        // with the manifest path as argv[1] (and Chrome adds the extension's
+        // origin URL as argv[2]), so we can't treat unknown args as an error.
+        // Fall through to serve() when stderr is piped (Firefox, scripts).
+        // Show usage when stderr is a TTY — that's the most reliable "someone
+        // is at a shell" signal, since stdin/stdout are often redirected but
+        // stderr usually stays attached to the terminal.
+        _ => {
+            if io::stderr().is_terminal() {
+                let _ = usage(&mut io::stderr());
+                return ExitCode::SUCCESS;
+            }
+            serve()
         }
     };
     match result {
