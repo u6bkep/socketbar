@@ -1,6 +1,6 @@
 [package]
 name = "socketbar-host"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Native messaging host for the Socketbar Firefox extension — enumerates local listening TCP sockets."
 license = "MIT"

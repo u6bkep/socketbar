@@ -1,12 +1,15 @@
 {
   "manifest_version": 2,
   "name": "Socketbar",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Shows local listening TCP ports in your URL bar and toolbar. Type 'lh' + space, or click the toolbar icon.",
   "browser_specific_settings": {
     "gecko": {
       "id": "socketbar@gecko.network",
-      "strict_min_version": "109.0"
+      "strict_min_version": "109.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
     }
   },
   "icons": {
