@@ -22,14 +22,38 @@ open it.
 - `host-manifest/` — template for the native messaging host manifest that
   Firefox reads from `~/.mozilla/native-messaging-hosts/`.
 
-## Install (development)
+## Install
 
-Requires `rustup` / `cargo` and Firefox 109+.
+All paths need Firefox 109+, and the Rust paths need `rustup` /
+[rustup.rs](https://rustup.rs).
+
+### With cargo, straight from git
 
 ```sh
+cargo install --git https://github.com/u6bkep/socketbar socketbar-host
+socketbar-host install
+```
+
+The first line builds and drops the binary into `~/.cargo/bin`. The second
+writes `~/.mozilla/native-messaging-hosts/io.socketbar.host.json` pointing at
+it, which is how Firefox finds the host. Re-run `socketbar-host install` after
+each upgrade so the manifest points at the new binary.
+
+Then load the extension (grab `socketbar-*.xpi` from a
+[release](https://github.com/u6bkep/socketbar/releases/latest) and drag it into
+`about:addons`, or clone this repo and load `extension/manifest.json` from
+`about:debugging`).
+
+To remove: `socketbar-host uninstall && cargo uninstall socketbar-host`.
+
+### From a clone
+
+```sh
+git clone https://github.com/u6bkep/socketbar && cd socketbar
 ./install.sh
 ```
 
+`install.sh` runs `cargo build --release` and `socketbar-host install` for you.
 Then in Firefox:
 
 1. `about:debugging#/runtime/this-firefox`
@@ -37,13 +61,12 @@ Then in Firefox:
 3. Pick `extension/manifest.json`
 4. Click the toolbar icon, or type `lh` + space in the URL bar
 
-## Install (from release)
+### From a release binary (no Rust toolchain)
 
-Grab the matching `socketbar-host-*` binary and `socketbar-*.xpi` from the
-[latest release](https://github.com/_/socketbar/releases/latest). Drop the
-binary somewhere on your `$PATH`, edit the `path` field in
-`host-manifest/io.socketbar.host.json.template` to point at it, and copy it to
-`~/.mozilla/native-messaging-hosts/io.socketbar.host.json`.
+Download the matching `socketbar-host-*` binary from a
+[release](https://github.com/u6bkep/socketbar/releases/latest), make it executable,
+and run `./socketbar-host-<target> install` — the subcommand locates itself via
+`current_exe()` and writes a manifest pointing at wherever you put the file.
 
 For Firefox release builds, the `.xpi` must be signed by Mozilla — see
 [AMO signing](https://extensionworkshop.com/documentation/publish/signing-and-distribution-overview/).

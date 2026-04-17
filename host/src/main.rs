@@ -1,8 +1,16 @@
-use std::io::{self, Read, Write};
+use std::env;
+use std::fs;
+use std::io::{self, IsTerminal, Read, Write};
+use std::path::PathBuf;
+use std::process::ExitCode;
 
 use serde::{Deserialize, Serialize};
 
 mod listeners;
+
+const HOST_NAME: &str = "io.socketbar.host";
+const EXTENSION_ID: &str = "socketbar@gecko.network";
+const HOST_DESCRIPTION: &str = "Socketbar — enumerates listening TCP sockets";
 
 #[derive(Deserialize)]
 struct Request {
@@ -62,7 +70,7 @@ fn handle(req: Request) -> Response {
     }
 }
 
-fn main() -> io::Result<()> {
+fn serve() -> io::Result<()> {
     let stdin = io::stdin();
     let stdout = io::stdout();
     let mut stdin = stdin.lock();
@@ -84,4 +92,130 @@ fn main() -> io::Result<()> {
         write_message(&mut stdout, &resp)?;
     }
     Ok(())
+}
+
+fn manifest_path() -> io::Result<PathBuf> {
+    let home = env::var_os("HOME")
+        .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "$HOME not set"))?;
+    Ok(PathBuf::from(home)
+        .join(".mozilla/native-messaging-hosts")
+        .join(format!("{HOST_NAME}.json")))
+}
+
+fn manifest_body(exe_path: &str) -> String {
+    let body = serde_json::json!({
+        "name": HOST_NAME,
+        "description": HOST_DESCRIPTION,
+        "path": exe_path,
+        "type": "stdio",
+        "allowed_extensions": [EXTENSION_ID],
+    });
+    serde_json::to_string_pretty(&body).expect("serializing static JSON can't fail")
+}
+
+fn install() -> io::Result<()> {
+    let exe = env::current_exe()?;
+    let exe_str = exe.to_str().ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::InvalidData,
+            "executable path is not valid UTF-8",
+        )
+    })?;
+    let manifest = manifest_path()?;
+    if let Some(parent) = manifest.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let mut body = manifest_body(exe_str);
+    body.push('\n');
+    fs::write(&manifest, body)?;
+    println!("Installed Firefox native-messaging host:");
+    println!("  manifest: {}", manifest.display());
+    println!("  binary:   {}", exe.display());
+    println!();
+    println!("Next: load the Socketbar extension in Firefox.");
+    println!("  - Development:  about:debugging → Load Temporary Add-on → extension/manifest.json");
+    println!("  - Release .xpi: drag into about:addons (must be Mozilla-signed)");
+    Ok(())
+}
+
+fn uninstall() -> io::Result<()> {
+    let manifest = manifest_path()?;
+    match fs::remove_file(&manifest) {
+        Ok(()) => println!("Removed {}", manifest.display()),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => {
+            println!("Not installed (no file at {})", manifest.display());
+        }
+        Err(e) => return Err(e),
+    }
+    Ok(())
+}
+
+fn usage(out: &mut dyn Write) -> io::Result<()> {
+    writeln!(out, "Socketbar native-messaging host")
+        .and_then(|_| writeln!(out))
+        .and_then(|_| writeln!(out, "USAGE:"))
+        .and_then(|_| {
+            writeln!(
+                out,
+                "  socketbar-host             run as a Firefox native-messaging host (no args)"
+            )
+        })
+        .and_then(|_| {
+            writeln!(
+                out,
+                "  socketbar-host install     write Firefox host manifest pointing at this binary"
+            )
+        })
+        .and_then(|_| {
+            writeln!(
+                out,
+                "  socketbar-host uninstall   remove the Firefox host manifest"
+            )
+        })
+}
+
+fn main() -> ExitCode {
+    let args: Vec<String> = env::args().skip(1).collect();
+    let result = match args.first().map(String::as_str) {
+        None => {
+            if io::stdin().is_terminal() {
+                let _ = usage(&mut io::stderr());
+                return ExitCode::SUCCESS;
+            }
+            serve()
+        }
+        Some("install") => install(),
+        Some("uninstall") => uninstall(),
+        Some("-h" | "--help") => {
+            let _ = usage(&mut io::stdout());
+            return ExitCode::SUCCESS;
+        }
+        Some(other) => {
+            eprintln!("unknown subcommand: {other}");
+            let _ = usage(&mut io::stderr());
+            return ExitCode::from(2);
+        }
+    };
+    match result {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("error: {e}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn manifest_body_roundtrips() {
+        let body = manifest_body("/home/example/.cargo/bin/socketbar-host");
+        let v: serde_json::Value = serde_json::from_str(&body).unwrap();
+        assert_eq!(v["name"], HOST_NAME);
+        assert_eq!(v["type"], "stdio");
+        assert_eq!(v["path"], "/home/example/.cargo/bin/socketbar-host");
+        assert_eq!(v["allowed_extensions"], serde_json::json!([EXTENSION_ID]));
+    }
 }

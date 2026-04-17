@@ -81,26 +81,36 @@ jobs:
             -x "*.DS_Store" "*/.*"
       - uses: actions/upload-artifact@v4
         with:
-          name: extension
+          name: extension-unsigned
           path: dist/socketbar-*.xpi
           if-no-files-found: error
 
-      # To publish signed builds to AMO, set AMO_JWT_ISSUER / AMO_JWT_SECRET repo
-      # secrets, then enable this step. web-ext sign uploads to AMO and downloads
-      # a signed .xpi you can attach to the release.
-      #
-      # - name: Sign with AMO
-      #   if: startsWith(github.ref, 'refs/tags/')
-      #   run: |
-      #     npm install -g web-ext
-      #     cd extension
-      #     web-ext sign --channel=unlisted \
-      #       --api-key=${{ secrets.AMO_JWT_ISSUER }} \
-      #       --api-secret=${{ secrets.AMO_JWT_SECRET }} \
-      #       --artifacts-dir=../dist-signed
+  sign-extension:
+    needs: package-extension
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install -g web-ext
+      - name: Sign via AMO (unlisted)
+        working-directory: extension
+        run: |
+          mkdir -p ../dist-signed
+          web-ext sign --channel=unlisted \
+            --api-key="${{ secrets.AMO_JWT_ISSUER }}" \
+            --api-secret="${{ secrets.AMO_JWT_SECRET }}" \
+            --artifacts-dir=../dist-signed
+      - uses: actions/upload-artifact@v4
+        with:
+          name: extension-signed
+          path: dist-signed/*.xpi
+          if-no-files-found: error
 
   release:
-    needs: [lint, test, build-host, package-extension]
+    needs: [lint, test, build-host, package-extension, sign-extension]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:
@@ -112,8 +122,13 @@ jobs:
       - name: Stage release
         run: |
           mkdir -p release
-          find artifacts -type f \( -name 'socketbar-host-*' -o -name '*.xpi' \) \
-            -exec cp {} release/ \;
+          # Prefer the signed .xpi; fall back to unsigned if signing didn't run.
+          if compgen -G "artifacts/extension-signed/*.xpi" > /dev/null; then
+            cp artifacts/extension-signed/*.xpi release/
+          else
+            cp artifacts/extension-unsigned/*.xpi release/
+          fi
+          find artifacts -type f -name 'socketbar-host-*' -exec cp {} release/ \;
           ls -la release/
       - uses: softprops/action-gh-release@v2
         with:
