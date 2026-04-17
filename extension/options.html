@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 13px/1.5 system-ui, sans-serif; max-width: 720px; margin: 28px auto; padding: 0 20px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  p.lede { color: rgba(128,128,128,0.9); margin: 0 0 24px; }
+  fieldset { border: 1px solid rgba(128,128,128,0.3); border-radius: 6px; padding: 12px 16px 14px; margin: 0 0 18px; }
+  legend { font-weight: 600; padding: 0 6px; font-size: 13px; }
+  label.block { display: block; margin: 10px 0 4px; font-weight: 500; }
+  .hint { color: rgba(128,128,128,0.9); font-size: 12px; margin-top: 2px; }
+  textarea { width: 100%; box-sizing: border-box; font: 12px/1.4 ui-monospace, monospace; padding: 6px 8px; min-height: 64px; resize: vertical; }
+  input[type=number] { width: 90px; padding: 4px 6px; }
+  .row { display: flex; align-items: center; gap: 6px; margin: 6px 0; }
+  .indent { padding-left: 24px; }
+  #actions { display: flex; gap: 10px; align-items: center; margin-top: 18px; }
+  button { padding: 6px 14px; font: inherit; cursor: pointer; }
+  #status { color: #2a7; font-size: 12px; min-height: 1em; }
+</style>
+</head>
+<body>
+<h1>Socketbar — filters</h1>
+<p class="lede">Hide listeners that aren't typically web-facing. The popup has a <em>Show all</em> toggle that temporarily bypasses every filter on this page.</p>
+
+<fieldset>
+  <legend>Processes</legend>
+  <label class="block" for="processDenylist">Denylist</label>
+  <textarea id="processDenylist"></textarea>
+  <div class="hint">One per line or space-separated. Case-insensitive substring match against the process name.</div>
+  <label class="block" for="processAllowlist">Allowlist (optional)</label>
+  <textarea id="processAllowlist"></textarea>
+  <div class="hint">If non-empty, <em>only</em> listeners from these processes are shown. Overrides the denylist.</div>
+</fieldset>
+
+<fieldset>
+  <legend>Ports</legend>
+  <label class="block" for="portDenylist">Denylist</label>
+  <textarea id="portDenylist"></textarea>
+  <div class="hint">Space- or line-separated. Ranges allowed: <code>22 25 3000-3100</code>.</div>
+  <label class="block" for="portAllowlist">Allowlist (optional)</label>
+  <textarea id="portAllowlist"></textarea>
+  <div class="hint">If non-empty, only these ports are shown. Overrides the denylist and the noisy-process rule below.</div>
+</fieldset>
+
+<fieldset>
+  <legend>Heuristics</legend>
+  <div class="row">
+    <input type="checkbox" id="loopbackOnly">
+    <label for="loopbackOnly">Loopback-only — hide ports not reachable via <code>localhost</code></label>
+  </div>
+  <div class="row">
+    <input type="checkbox" id="dedupeFamilies">
+    <label for="dedupeFamilies">Merge IPv4 + IPv6 duplicates of the same (port, process)</label>
+  </div>
+  <div class="row">
+    <input type="checkbox" id="suppressRandomHighPorts">
+    <label for="suppressRandomHighPorts">Suppress random-high-port IPC from noisy processes</label>
+  </div>
+  <div class="row indent">
+    <label for="randomHighPortMin">Threshold:</label>
+    <input type="number" id="randomHighPortMin" min="1024" max="65535">
+  </div>
+  <label class="block" for="randomHighPortProcesses">Processes treated as "noisy"</label>
+  <textarea id="randomHighPortProcesses"></textarea>
+  <div class="hint">Listeners from these processes on ports ≥ threshold are hidden. Port allowlist overrides this.</div>
+</fieldset>
+
+<div id="actions">
+  <button id="save">Save</button>
+  <button id="reset">Restore defaults</button>
+  <span id="status"></span>
+</div>
+
+<script src="defaults.js"></script>
+<script src="options.js"></script>
+</body>
+</html>

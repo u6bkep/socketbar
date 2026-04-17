@@ -1,0 +1,7 @@
+{
+  "name": "io.socketbar.host",
+  "description": "Socketbar — enumerates listening TCP sockets",
+  "path": "__HOST_PATH__",
+  "type": "stdio",
+  "allowed_extensions": ["socketbar@gecko.network"]
+}

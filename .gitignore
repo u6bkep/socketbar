@@ -1,0 +1,11 @@
+/host/target/
+/host/Cargo.lock.bak
+*.xpi
+/dist/
+/web-ext-artifacts/
+.DS_Store
+*.swp
+*.swo
+node_modules/
+.claude/
+*.xcf

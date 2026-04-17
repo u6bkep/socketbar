@@ -1,0 +1,18 @@
+[package]
+name = "socketbar-host"
+version = "0.1.0"
+edition = "2021"
+description = "Native messaging host for the Socketbar Firefox extension — enumerates local listening TCP sockets."
+license = "MIT"
+repository = "https://github.com/_/socketbar"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+opt-level = "z"
+panic = "abort"

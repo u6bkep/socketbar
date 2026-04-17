@@ -1,0 +1,41 @@
+{
+  "manifest_version": 2,
+  "name": "Socketbar",
+  "version": "0.1.0",
+  "description": "Shows local listening TCP ports in your URL bar and toolbar. Type 'lh' + space, or click the toolbar icon.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "socketbar@gecko.network",
+      "strict_min_version": "109.0"
+    }
+  },
+  "icons": {
+    "48": "icons/logo.svg",
+    "96": "icons/logo.svg",
+    "128": "icons/logo.svg"
+  },
+  "permissions": [
+    "nativeMessaging",
+    "tabs",
+    "storage"
+  ],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "omnibox": {
+    "keyword": "lh"
+  },
+  "browser_action": {
+    "default_title": "Socketbar — listening ports",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/logo.svg",
+      "32": "icons/logo.svg"
+    }
+  },
+  "background": {
+    "scripts": ["defaults.js", "filters.js", "background.js"],
+    "persistent": false
+  }
+}
